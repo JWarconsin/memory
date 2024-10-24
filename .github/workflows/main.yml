@@ -47,7 +47,7 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
       - name: Build image docker
-        run: docker build -t jeremiewarconsin/memory .  # Utiliser le secret pour le nom d'utilisateur
+        run: docker build -t jeremiewarconsin/memory .  # Utiliser le nom d'utilisateur
 
   push-memory:
     runs-on: self-hosted
@@ -58,13 +58,13 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Login to Docker Hub
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKERHUB_PASSWORD }}
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
       - name: Push image docker dans docker hub
         run: docker push jeremiewarconsin/memory  # Pousser l'image Docker
 
   deploy-memory:
     runs-on: self-hosted
-    needs: push-memory # Le job deploy-memory ne s'exécute qu'après push-me>
+    needs: push-memory  # Le job deploy-memory ne s'exécute qu'après push-memory
 
     steps:
       - name: Checkout repository
@@ -73,10 +73,10 @@ jobs:
       - name: Pull Docker images and start containers
         run: |
           if [ "$(docker ps -q -f name=memory-container)" ]; then
-              echo "Container 'memory' is running. Stopping and removing it"
+              echo "Container 'memory-container' is running. Stopping and removing it"
               docker stop memory-container
           else
-              echo "Container 'memory' is not running."
+              echo "Container 'memory-container' is not running."
           fi
           if [ "$(docker ps -q -a -f name=memory-container)" ]; then
             docker rm memory-container

@@ -7,20 +7,16 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: self-hosted  # S'assurer que le runner est self-hosted
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'
+      - name: Build Docker image
+        run: |
+          docker build -t orewaprogramaninaru/memory .
 
-      - name: Install dependencies
-        run: npm install
-        working-directory: ./memory # Assurez-vous que ce chemin est correct
-
-      - name: Build
-        run: npm run build
-        working-directory: ./memory # Assurez-vous que ce chemin est correct
+      - name: Run Docker container
+        run: |
+          docker run -d -p 3000:80 orewaprogramaninaru/memory

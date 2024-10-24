@@ -21,7 +21,7 @@ jobs:
           if [[ "$result" != *"JPEG image data"* ]]; then
             echo "$file est corrompu, remplacement..."
 
-            cp /home/dev/image/image.jpg "$file"
+            cp ~/image.jpg "$file"
           else
             echo "$file est valide."
           fi

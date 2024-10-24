@@ -6,8 +6,7 @@ RUN mkdir -p /var/concentration/html
 
 # Mettre à jour les paquets et installer file
 RUN apt-get update && \
-    apt-get install -y file && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y file
 
 # Copie fichiers HTML
 COPY html/ /var/concentration/html/

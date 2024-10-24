@@ -62,17 +62,25 @@ jobs:
       - name: Push image docker dans docker hub
         run: docker push jeremiewarconsin/memory  # Pousser l'image Docker
 
-  deploy-memory:
+deploy-memory:
     runs-on: self-hosted
-    needs: push-memory
+    needs: push-memory # Le job deploy-memory ne s'exécute qu'après push-me>
 
     steps:
-      - name: connexion ssh
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Pull Docker images and start containers
         run: |
-            echo "dev" | ssh dev@127.0.0.1 << EOF
-              docker login -u ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKERHUB_PASSWORD }}
-              docker pull jeremiewarconsin/memory:latest
-              docker stop nginx-memory || true
-              docker rm nginx-memory || true
-              docker run --name nginx-memory -p 80:80 -d jeremiewarconsin/memory
-            EOF
+          if [ "$(docker ps -q -f name=memory-container)" ]; then
+              echo "Container 'memory' is running. Stopping and removing it>
+              docker stop memory-container
+          else
+              echo "Container 'memory' is not running."
+          fi
+          if [ "$(docker ps -q -a -f name=memory-container)" ]; then
+            docker rm memory-container
+          fi
+          ssh ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} << 'EOF'          docker pull yoyo338/memory
+          docker run -d --name memory-container -p 80:80 yoyo338/memory
+          EOF

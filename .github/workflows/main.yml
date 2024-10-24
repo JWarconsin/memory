@@ -1,0 +1,90 @@
+name: Workflow memory
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  test-memory:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Test JPG files
+      run: |
+        for file in $(find . -name "*.jpg"); do
+          result=$(file "$file")
+
+          if [[ "$result" != *"JPEG image data"* ]]; then
+            echo "$file est corrompu, remplacement..."
+            cp ~/image.jpg "$file"  # Remplacer par une image valide
+          else
+            echo "$file est valide."
+          fi
+        done
+
+    - name: Commit changes if any
+      run: |
+        git config --global user.name 'JWarconsin'
+        git config --global user.email 'jeremie.warconsin@student.junia.com'
+
+        if git diff --quiet; then
+          echo "Aucune modification détectée."
+        else
+          git add .
+          git commit -m "Remplacement des fichiers jpg corrompus"
+          git push origin develop  # Pousser les changements sur la branche develop
+        fi
+
+  build-memory:
+    runs-on: self-hosted
+    needs: test-memory
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Build image docker
+        run: docker build -t jeremiewarconsin/memory .  # Utiliser le nom d'utilisateur
+
+  push-memory:
+    runs-on: self-hosted
+    needs: build-memory
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Push image docker dans docker hub
+        run: docker push jeremiewarconsin/memory  # Pousser l'image Docker
+
+  deploy-memory:
+    runs-on: self-hosted
+    needs: push-memory  # Le job deploy-memory ne s'exécute qu'après push-memory
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Pull Docker images and start containers
+        run: |
+          if [ "$(docker ps -q -f name=memory-container)" ]; then
+              echo "Container 'memory-container' is running. Stopping and removing it"
+              docker stop memory-container
+          else
+              echo "Container 'memory-container' is not running."
+          fi
+          if [ "$(docker ps -q -a -f name=memory-container)" ]; then
+            docker rm memory-container
+          fi
+          ssh ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} << 'EOF'
+            echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            docker pull ${{ secrets.DOCKER_USERNAME }}/memory:latest
+            cd ~/memory
+            docker compose down
+            docker compose up -d
+          EOF

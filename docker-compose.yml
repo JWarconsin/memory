@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  nginx-memory:
+    image: jeremiewarconsin/memory
+    container_name: nginx-memory
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    restart: always

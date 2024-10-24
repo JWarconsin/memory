@@ -62,7 +62,7 @@ jobs:
       - name: Push image docker dans docker hub
         run: docker push jeremiewarconsin/memory  # Pousser l'image Docker
 
-deploy-memory:
+  deploy-memory:
     runs-on: self-hosted
     needs: push-memory # Le job deploy-memory ne s'exécute qu'après push-me>
 

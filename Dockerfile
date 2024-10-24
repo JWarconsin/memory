@@ -1,17 +1,22 @@
-# Utiliser l'image officielle Nginx comme image de base
-FROM nginx:alpine
+# Utiliser l'image Nginx officielle comme base
+FROM nginx:latest
 
-# Installer le package file
-RUN apk add --no-cache file
+# Création du répertoire pour notre site
+RUN mkdir -p /var/concentration/html
 
-# Copier le fichier de configuration Nginx dans le conteneur
+# Mettre à jour les paquets et installer file
+RUN apt-get update && \
+    apt-get install -y file && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copie fichiers HTML
+COPY html/ /var/concentration/html/
+
+# Copie configuration nginx
 COPY conf/nginx.conf /etc/nginx/nginx.conf
 
-# Copier les fichiers HTML dans le répertoire approprié
-COPY html /var/concentration/html/
-
-# Exposer le port 80
+# Redirection port docker vers wsl
 EXPOSE 80
 
-# Commande par défaut pour démarrer Nginx
+# Démarrer Nginx
 CMD ["nginx", "-g", "daemon off;"]

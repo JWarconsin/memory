@@ -1,4 +1,4 @@
-name: CI
+name: Workflow memory
 
 on:
   push:
@@ -6,17 +6,73 @@ on:
       - develop
 
 jobs:
-  build:
-    runs-on: self-hosted  # S'assurer que le runner est self-hosted
+  test-memory:
+    runs-on: self-hosted
 
     steps:
-      - name: Checkout code
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Test JPG files
+      run: |
+        for file in $(find . -name "*.jpg"); do
+          result=$(file "$file")
+
+          if [[ "$result" != *"JPEG image data"* ]]; then
+            echo "$file est corrompu, remplacement..."
+
+            cp /home/dev/image/canard.jpg "$file"
+          else
+            echo "$file est valide."
+          fi
+        done
+
+    - name: Commit changes if any
+      run: |
+        git config --global user.name 'JWarconsin'
+        git config --global user.email 'jeremie.warconsin@student.junia.com'
+
+        if git diff --quiet; then
+          echo "Aucune modification détectée."
+        else
+          git add .
+          git commit -m "Remplacement des fichiers jpg corrompus"
+          git push origin develop
+        fi
+
+  build-memory:
+    runs-on: self-hosted
+    needs: test-memory
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Build image docker
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/memory .
+
+  push-memory:
+    runs-on: self-hosted
+    needs: build-memory
+
+    steps:
+      - name: Checkout the repository
         uses: actions/checkout@v2
 
-      - name: Build Docker image
-        run: |
-          docker build -t orewaprogramaninaru/memory .
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Push image docker dans docker hub
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/memory
+  deploy-memory:
+    runs-on: self-hosted
+    needs: push-memory
 
-      - name: Run Docker container
+    steps:
+      - name: connexion ssh
         run: |
-          docker run -d -p 3000:80 orewaprogramaninaru/memory
+            echo "dev" | ssh dev@127.0.0.1 << EOF
+              echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+              docker pull ${{ secrets.DOCKER_USERNAME }}/memory:latest
+              docker stop nginx-memory || true
+              docker rm nginx-memory || true
+              docker run --name nginx-memory -p 80:80 -d ${{ secrets.DOCKER_USERNAME }}/memory
+            EOF
